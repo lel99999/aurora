@@ -1,0 +1,42 @@
+---
+- hosts: analyticstester_terminal
+#- hosts: analytics_terminal
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: install libselinux-python
+      yum:
+        name: libselinux-python
+        state: present
+    - name: install centos Software Collections Repository (SCL)
+      yum:
+        name: centos-release-scl
+        state: latest
+    - name: install python 2.7
+      yum:
+        name: python27
+        state: present
+    - name: install python 3.6
+      yum:
+        name: rh-python36
+        state: present
+#   - name: download python 2.7.15
+#     get_url:
+#       url: http://mirror.centos.org/centos/6/sclo/x86_64/rh/python27/python27-python-2.7.13-3.el6.x86_64.rpm 
+#       url: https://www.python.org/ftp/python/2.7.15/Python-2.7.15.tgz
+#       dest: /opt
+#   - name: install python 2.7.13
+#     shell: yum -y localinstall /opt/python27-python-2.7.13-3.el6.x86_64.rpm
+        
+# roles:
+#   - python
+#   - python3
+#   - python-libs
+#   - r
+#   - r-core
+#   - r-libs
+#   - r-shiny
+#   - r-shiny-config
+#   - r-studio-server
+#   - r-studio-server-config
+#   - r-studio-desktop
