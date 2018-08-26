@@ -1,19 +1,21 @@
 # main.yml - Sets up a glusterfs file server node
 ---
 
+- name: add centos gluster3.8 repo
+  command: echo $'[centos-gluster38]\nname=CentOS-$releasever - Gluster 3.8\nbaseurl=http://mirror.centos.org/centos/$releasever/storage/$basearch/gluster-3.8/\ngpgcheck=1\nenabled=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-Storage' | sudo tee /etc/yum.repos.d/gluster38.repo
+
+- name: yum update
+  command: yum -y update
 - name: Install required packages
   yum:
-#   name: centos-release-gluster38
-    name: centos-release-gluster312
+    name: centos-release-gluster38
     state: latest
   when: not custom_repo
 
 - name: Install required packages
-  command: yum -y install glusterfs-server-3.12.8
-# yum:
-#   name: glusterfs-server-3.8.4
-#   name: glusterfs-server-3.12.8
-#   state: latest
+  yum:
+    name: glusterfs-server-3.8.4
+    state: latest
 
 - name: Enable gluster server
   service:

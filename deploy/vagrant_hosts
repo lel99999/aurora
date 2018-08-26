@@ -7,6 +7,7 @@ admin_terminal ansible_ssh_host=10.0.1.2
 [file_server]
 file_server_1 ansible_ssh_host=10.0.1.4
 file_server_2 ansible_ssh_host=10.0.1.5
+;file_server_2 ansible_ssh_host=10.0.1.5 ansible_ssh_user=vagrant ansible_ssh_pass=vagrant
 
 [proxy_server]
 proxy_server ansible_ssh_host=10.0.1.3
