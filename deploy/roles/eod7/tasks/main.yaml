@@ -11,20 +11,27 @@
 #   - abyssinica-fonts
     - tree
     - expect
+    - libselinux-python
   tags:
     - eod
 
 - include: install_eod.yaml
   when: eod_install
+  tags:
+    - eod
 
 - include: upgrade_eod.yaml
   when: eod_upgrade
-
+  tags:
+    - eod
+    
 - name: Configure node.cfg
   template:
     src: node.cfg.j2
     dest: "{{ eod_install_directory }}/conf/admin/node.cfg"
   when: eod_datastore_directory is defined
+  tags:
+    - eod
 
 - name: Configure cluster.cfg
   template:
@@ -44,12 +51,16 @@
     group: root
     mode: 0750
   with_items: "{{ eod_admins }}"
+  tags:
+    - eod
 
 - name: Ensure admins can login via Connection Server
   template:
     src: admin_settings.cfg.j2
     dest: "{{ eod_install_directory }}/conf/users/{{ item }}/settings.cfg"
   with_items: "{{ eod_admins }}"
+  tags:
+    - eod
 
 - name: Configure xdmcp
   template:
@@ -82,7 +93,7 @@
     - restart eod
   tags:
     - eod
-
+    
 # TODO: Add template for node.cfg
 
 ### Install and configure Desktop Environment
@@ -159,10 +170,10 @@
   template:
     src: custom.conf
     dest: /etc/gdm/custom.conf
-    mode: 0644
+    mode: 064
   notify:
     - restart gdm
-#   - restart prefdm
+    mode: 0644
   tags:
     - eod
 
@@ -171,7 +182,6 @@
   with_items: "{{ gconf_settings }}"
   notify:
     - restart gdm
-#   - restart prefdm
   tags:
     - eod
 
@@ -180,10 +190,8 @@
   with_items: "{{ gconf_settings }}"
   notify:
     - restart gdm
-#   - restart prefdm
   tags:
     - eod
-# - can configure with systemctl set-default TARGET.target
 - name: configure inittab
   template:
     src: inittab
@@ -197,7 +205,6 @@
   register: xtarget
   tags:
     - eod
-#- debug: var=xtarget.stdout_lines
 
 - name: configure xorg.conf
   template:
@@ -244,16 +251,12 @@
     - eod
 
 - name: run gdm
-# command: start prefdm  -- for CentOS/RHEL6
-  command: systemctl start display-manager 
+  command: systemctl start gdm
   register: gdm_status
   failed_when: gdm_status.rc != 0 and "Job is already running" not in gdm_status.stderr
   changed_when: gdm_status.rc == 0
   tags:
     - eod
-
-### Ensure EOD starts on boot
-
 - name: Check if EOD is configured to run on boot
   shell: "{{ eod_install_directory }}/bin/otecs bootstatus"
   register: eod_bootstatus
@@ -270,7 +273,6 @@
     - eod
 
 ### Allow the admin group to read logs and configs
-
 - name: Ensure that EOD log directory exists
   file:
     path: "{{ eod_install_directory }}/log"
@@ -307,10 +309,11 @@
 - name: create custom chain
   command: "iptables -N {{ iptables_chain }}"
   ignore_errors: yes
+  tags:
+    - eod
 
 - name: open up ports in ipconfig
   command: "iptables -A {{ iptables_chain }} -p tcp -m tcp --dport {{ item }} -j ACCEPT"
-  #command: "iptables -I {{ iptables_chain }} 3 -p tcp -m tcp --dport {{ item }} -j ACCEPT"
   with_items: "{{ eod_client_ports }}"
   when: iptables_config and deploy_iptables
   tags:
@@ -318,7 +321,6 @@
 
 - name: open up udp port in ipconfig
   command: "iptables -A {{ iptables_chain }} -p udp -m udp --dport {{ item }} -j ACCEPT"
-  #command: "iptables -I {{ iptables_chain }} 3 -p udp -m udp --dport {{ item }} -j ACCEPT"
   with_items: "{{ eod_client_ports_udp }}"
   when: iptables_config and deploy_iptables
   tags:
@@ -333,31 +335,44 @@
   tags:
     - eod
 
-#- name: Add /usr/local/eod/conf/admin/Xconfig/*.cfg files to register
-#  shell: find /usr/local/eod/conf/admin/Xconfig/ -type f -name \*.cfg -printf "%f\n"
-#  register: cfg_files
-#  ignore_errors: yes
-#  tags:
-#    - eod
-#  when: custom_repo
+- name: fix XFCE4 PolicyKit Agent Error
+  lineinfile:
+    path: /etc/xdg/autostart/xfce-polkit.desktop
+    regexp: '^Exec=/usr/libexec/xfce-polkit'
+    line: '#Exec=/usr/libexec/xfce-polkit'
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - eod
 
-#- name: Add XkbExtension to four files
-#  lineinfile:
-#    dest: "{{ eod_Xconfig_directory }}/{{ item }}"
-#    regexp: XkbExtension
-#    line: XkbExtension=1
-#  with_items: "{{ cfg_files.stdout_lines }}"
-#  when: custom_repo
-#  tags:
-#    - eod
-#  when: custom_repo
+- name: replace XFCE4 PolicyKit Agent with GNOME/MATE agent
+  lineinfile:
+    path: /etc/xdg/autostart/xfce-polkit.desktop
+    regexp: '^Exec='
+    insertafter: '^#Exec='
+    line: 'Exec=/usr/libexec/polkit-mate-authentication-agent-1'
+  tags:
+    - eod
 
-#- name: Add Composite to four files
-#  lineinfile:
-#    dest: "{{ eod_Xconfig_directory }}/{{ item }}"
-#    regexp: Composite
-#    line: Composite=1
-#  with_items: "{{ cfg_files.stdout_lines }}"
-#  when: custom_repo
-#  tags:
-#    - eod
+- name: copy desktop.xml template to etc location
+  template:
+    src: xfce4-desktop.xml
+    dest: "{{ eod_prechannel_location }}"
+  tags:
+    - eod
+
+- name: copy keyboard.xml template to etc location
+  template:
+    src: xfce4-keyboard-shortcuts.xml
+    dest: "{{ eod_prechannel_location }}"
+  tags:
+    - eod
+
+- name: copy panel.xml template to etc location
+  template:
+    src: xfce4-panel.xml
+    dest: "{{ eod_prechannel_location }}"
+  tags:
+    - eod
+
